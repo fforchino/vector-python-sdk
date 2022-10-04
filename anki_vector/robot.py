@@ -121,7 +121,8 @@ class Robot:
                  enable_nav_map_feed: bool = None,
                  show_viewer: bool = False,
                  show_3d_viewer: bool = False,
-                 behavior_control_level: ControlPriorityLevel = ControlPriorityLevel.DEFAULT_PRIORITY):
+                 behavior_control_level: ControlPriorityLevel = ControlPriorityLevel.DEFAULT_PRIORITY,
+                 take_control: bool = True):
         if default_logging:
             util.setup_basic_logging()
         self.logger = util.get_class_logger(__name__, self)
@@ -152,6 +153,8 @@ class Robot:
         #: :class:`anki_vector.connection.Connection`: The active connection to the robot.
         self._conn = Connection(self._name, ':'.join([self._ip, self._port]), self._cert_file, self._guid, behavior_control_level=behavior_control_level)
         self._events = events.EventHandler(self)
+
+        self._take_control = take_control
 
         # placeholders for components before they exist
         self._anim: animation.AnimationComponent = None
@@ -623,7 +626,7 @@ class Robot:
         self._last_image_time_stamp = msg.last_image_time_stamp
         self._status.set(msg.status)
 
-    def connect(self, timeout: int = 10) -> None:
+    def connect(self, timeout: int = 10, take_control: bool = True) -> None:
         """Start the connection to Vector.
 
         .. testcode::
@@ -638,7 +641,7 @@ class Robot:
         :param timeout: The time to allow for a connection before a
             :class:`anki_vector.exceptions.VectorTimeoutException` is raised.
         """
-        self.conn.connect(timeout=timeout)
+        self.conn.connect(timeout=timeout, take_control=take_control)
         self.events.start(self.conn)
 
         # Initialize components
@@ -739,7 +742,7 @@ class Robot:
         self.conn.close()
 
     def __enter__(self):
-        self.connect(self.behavior_activation_timeout)
+        self.connect(self.behavior_activation_timeout, take_control=self._take_control)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
