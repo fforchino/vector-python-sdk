@@ -1,3 +1,6 @@
+VER_003
+- Changes in the runCmd.sh to proper run the python scripts as the pi user
+
 VER_002
 - Add proper support for play, say and move commands
 

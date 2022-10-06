@@ -1,9 +1,6 @@
 #!/bin/bash
 
-whoami
-sudo -i -u pi bash << EOF
-/home/pi/vector-python-sdk/wirepod/$1.py "${@:2}"
-EOF
+cmd="/home/pi/vector-python-sdk/wirepod/$1.py \"${@:2}\""
+echo $cmd
+runuser -l pi -c "$cmd"
 echo "Out"
-whoami
-
