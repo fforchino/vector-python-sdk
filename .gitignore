@@ -1,2 +1,7 @@
 build/
 dist/
+wirepod/test.wav
+anki_vector.egg-info/
+anki_vector/__pycache__/
+anki_vector/configure/
+anki_vector/messaging/__pycache__/

@@ -30,13 +30,21 @@ from pydub import AudioSegment
 def main():
     with anki_vector.Robot(cache_animation_lists=False) as robot:
         audioFile = ""
-        print ("---"+sys.argv[1]+"---")
-        args = sys.argv[1].split("%")
+        args = sys.argv[1]
+        print ("---"+args+"---")
+        args = args[1:]
+        args = args[:-1]
+        args = args.split(";")
                 
         introMessage = args[0]
         volume = int(args[1])
         audioPath = args[2]
         target = args[3]
+        
+        print ("introMessage "+introMessage)
+        print ("volume "+str(volume))
+        print ("audioPath "+audioPath)
+        print ("target "+target)
 
         dst = "test.wav"
         if target=="*": 
