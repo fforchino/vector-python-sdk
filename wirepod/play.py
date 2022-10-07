@@ -16,10 +16,10 @@
 
 """
 Play audio files through Vector's speaker.
-USAGE: play.py <intro message>%<volume 0..100>%<audiopath>%<filename or '*'>
-E.g. ./play.py Rock and roll%75%/home/pi/AUDIOFILES%song01.wav
+USAGE: play.py <intro message>;<volume 0..100>;<audiopath>;<filename or '*'>
+E.g. ./play.py Rock and roll;75;/home/pi/AUDIOFILES;song01.wav
      Plays /home/pi/AUDIOFILES/song01.wav File is converted in the right format before being played
-E.g. ./play.py ' %75%/home/pi/AUDIOFILES%*'
+E.g. ./play.py ' ;75;/home/pi/AUDIOFILES;*'
      Plays a random song file located in /home/pi/AUDIOFILES File is converted in the right format before being played
 """
 

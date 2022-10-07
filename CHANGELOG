@@ -1,3 +1,6 @@
+VER_004
+- Some bugfixing in the scripts
+
 VER_003
 - Changes in the runCmd.sh to proper run the python scripts as the pi user
 

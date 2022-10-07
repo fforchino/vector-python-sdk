@@ -18,6 +18,7 @@
 Say a sentence
 USAGE: say.py [sentence]
 E.g. ./say.py 'Hello Filippo'
+Says a random wisdom sentence if no sentence is passed
 """
 
 import anki_vector
@@ -37,14 +38,15 @@ def main():
             "That which does not kill us makes us stronger"
             ] 
 
-    with anki_vector.Robot(cache_animation_lists=False) as robot:
+    with anki_vector.Robot(cache_animation_lists=False) as robot:        
         phrase = ""
-        if len(sys.argv)<2: 
+        if len(sys.argv)>0:
+            phrase = sys.argv[1]
+        
+        if len(phrase)==0: 
             from random import randrange
             i = randrange(10)
             phrase = sentences[i]
-        else:
-            phrase = sys.argv[1]
 
         print("Say " + phrase)
         robot.behavior.say_text(phrase)

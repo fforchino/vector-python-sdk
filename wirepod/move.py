@@ -16,33 +16,94 @@
 
 """
 Move
-USAGE: move.py
-E.g. ./move.py
+USAGE: move.py [trick number]
+E.g. ./move.py 0
+Plays a dance trick. Plays a random trick if no trick number is passed
 """
 
 import anki_vector
-import sys
+import sys, os, glob
 import time
 
 def main():
     movement = [
-            "90%0%1%1", 
-            "0%90%1%-1",
-            "-90%0%1%1", 
-            "0%-90%1%-1"
-            ] 
+        [
+            "500%0%1%1%0",
+            "500%0%1%-1%0",
+            "500%0%1%1%0",
+            "-500%0%1%-1%0",
+            "-500%0%1%1%0",
+            "-500%0%1%-1%0"
+        ],
+        [
+            "90%0%1%0%0", 
+            "0%90%1%0%0",
+            "90%0%1%0%0", 
+            "0%90%1%0%0",
+            "90%0%1%0%0", 
+            "0%90%1%0%0",
+            
+            "0%-90%1%0%0",
+            "-90%0%1%0%0", 
+            "0%-90%1%0%0",
+            "-90%0%1%0%0", 
+            "0%-90%1%0%0",
+            "-90%0%1%0%0"
+        ],
+        [
+            "0%0%1%0%1", 
+            "0%0%1%0%-1", 
+            "0%0%1%0%1", 
+            "0%0%1%0%-1", 
+            "0%0%1%0%1", 
+            "0%0%1%0%-1", 
+            "0%0%1%0%1", 
 
+            "0%0%1%1%-1", 
+            "0%0%1%-1%1", 
+            "0%0%1%1%-1", 
+            "0%0%1%-1%1", 
+            "0%0%1%1%-1", 
+            "0%0%1%-1%1"
+        ],
+        [
+            "90%0%1%1%0", 
+            "0%90%1%-1%0",
+            "-90%0%1%1%0", 
+            "0%-90%1%-1%0"
+            "90%0%1%1%0", 
+            "0%90%1%-1%0",
+        ]
+    ]
+
+    r = -1
+    if len(sys.argv)>1 and len(sys.argv[1])>0:
+        r = int(sys.argv[1]) 
+        if r>len(movement):
+            r = len(movement)-1
+    
+    if r==-1: 
+        from random import randrange
+        r = randrange(len(movement))
+
+    #Debug 
+    #r = 0
+    
     with anki_vector.Robot(cache_animation_lists=False) as robot:
         i = 0
-        for m in movement:
+        moves = movement[r]
+        for m in moves:
             movs = m.split("%")
-            robot.motors.set_lift_motor(float(int(movs[3])))
             robot.motors.set_wheel_motors(int(movs[0]), int(movs[1]))
+            robot.motors.set_lift_motor(float(int(movs[3])))
+            robot.motors.set_head_motor(float(int(movs[4])))            
             time.sleep(float(int(movs[2])))
             i = i + 1
             
-        robot.motors.stop_all_motors()
+        robot.motors.set_wheel_motors(0,0)    
         robot.motors.set_lift_motor(0)
+        robot.motors.set_head_motor(0)
+        robot.motors.stop_all_motors()
     
 if __name__ == "__main__":
     main()
