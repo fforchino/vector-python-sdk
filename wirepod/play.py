@@ -47,6 +47,9 @@ def main():
         print ("target "+target)
 
         dst = "test.wav"
+        if os.path.exists(dst):
+            os.remove(dst)
+  
         if target=="*": 
             files = glob.glob(os.path.join(audioPath, '*'))
             from random import randrange
