@@ -6,3 +6,5 @@ numpy>=1.11
 opencv-python>=3.4
 Pillow>=3.3
 requests
+gTTS
+pydub

@@ -1,3 +1,6 @@
+VER_006
+- Added TTS capability using GTTS
+
 VER_005
 - play.py script doesn't work the first time
 
