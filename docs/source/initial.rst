@@ -14,6 +14,19 @@ To install the SDK on your system, select the instructions for your computer's o
 * :ref:`install-windows`
 * :ref:`install-linux`
 
+
+--------------------
+SDK Example Programs
+--------------------
+
+Anki provides example programs for novice and advanced users to run with the SDK. Download the SDK example programs here:
+
+  * `macOS/Linux SDK Examples <https://sdk-resources.anki.com/vector/0.6.0/anki_vector_sdk_examples_0.6.0.tar.gz>`_
+
+  * `Windows SDK Examples <https://sdk-resources.anki.com/vector/0.6.0/anki_vector_sdk_examples_0.6.0.tar.gz>`_
+
+Once downloaded, extract the packaged files to a new directory.
+
 ..
 
 .. _trouble:

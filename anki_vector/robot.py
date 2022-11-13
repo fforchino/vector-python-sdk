@@ -755,7 +755,59 @@ class Robot:
         get_battery_state_request = protocol.BatteryStateRequest()
         return await self.conn.grpc_interface.BatteryState(get_battery_state_request)
 
-    @connection.on_connection_thread(requires_control=False)
+    @on_connection_thread(requires_control=False)
+    async def get_latest_attention_transfer(self) -> protocol.LatestAttentionTransferResponse:
+        """Get the reason why the latest attention transfer failed, if any
+        
+            Returns <AttentionTransfer> with the fields:
+                - reason <AttentionTransferReason>
+                - seconds_ago
+            
+            .. testcode::
+
+                import anki_vector
+                with anki_vector.Robot() as robot:
+                    att_trans = robot.get_latest_attention_transfer()
+                    if att_trans:
+                        print("Last attention transfer failed because of: {0}".format(att_trans.reason))
+        """
+        latest_attention_transfer = protocol.LatestAttentionTransferRequest()
+        return await self.conn.grpc_interface.GetLatestAttentionTransfer(latest_attention_transfer)
+
+    @on_connection_thread(requires_control=False)
+    async def get_feature_flag_list(self) -> protocol.FeatureFlagListResponse:
+        """Get a list of available feature flags the robot knows.
+
+            .. testcode::
+
+                import anki_vector
+                with anki_vector.Robot() as robot:
+                    response = robot.get_feature_flag_list()
+                    if response:
+                        for feature in response.list:
+                            print(feature)
+        """
+        get_feature_flag_list = protocol.FeatureFlagListRequest()
+        return await self.conn.grpc_interface.GetFeatureFlagList(get_feature_flag_list)
+
+    @on_connection_thread(requires_control=False)
+    async def get_feature_flag(self, feature_name: str) -> protocol.FeatureFlagResponse:
+        """Get the status of the given feature flag of the robot.
+            
+        This let you check if a specific feature is valid and enabled (sufficiently developed to be used).
+        
+        .. testcode::
+
+                import anki_vector
+                with anki_vector.Robot(behavior_control_level=None) as robot:
+                    response = robot.get_feature_flag(feature_name='Exploring')
+                    if response:
+                        print(response)
+        """
+        get_feature_flag = protocol.FeatureFlagRequest(feature_name= feature_name)
+        return await self.conn.grpc_interface.GetFeatureFlag(get_feature_flag)
+    
+    @on_connection_thread(requires_control=False)
     async def get_version_state(self) -> protocol.VersionStateResponse:
         """Get the versioning information for Vector, including Vector's os_version and engine_build_id.
 

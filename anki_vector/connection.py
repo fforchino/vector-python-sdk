@@ -28,6 +28,7 @@ import logging
 import platform
 import sys
 import threading
+import time
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List
 
 import grpc
@@ -575,6 +576,9 @@ class Connection:
         """
         if self._control_events:
             self._control_events.shutdown()
+            # need to wait until all Futures were cancled before going on,
+            # otherwise python 3.8+ will raise alot of CancelledErrors and
+            time.sleep(2)
         if self._control_stream_task:
             self._control_stream_task.cancel()
             self.run_coroutine(self._control_stream_task).result()

@@ -40,6 +40,8 @@ __all__ = ["BehaviorComponent", "MAX_HEAD_ANGLE", "MAX_LIFT_HEIGHT", "MAX_LIFT_H
 
 from . import connection, objects, util
 from .messaging import protocol
+from .exceptions import VectorException
+from typing import Union
 
 # Constants
 
@@ -189,6 +191,211 @@ class BehaviorComponent(util.Component):
         drive_on_charger_request = protocol.DriveOnChargerRequest()
         return await self.grpc_interface.DriveOnCharger(drive_on_charger_request)
 
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def find_faces(self) -> protocol.FindFacesResponse:
+        """Look around for faces
+
+        Turn in place and move head to look for faces
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.behavior.find_faces()
+        """
+        find_faces_request = protocol.FindFacesRequest()
+        return await self.grpc_interface.FindFaces(find_faces_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def look_around_in_place(self) -> protocol.LookAroundInPlaceResponse:
+        """Look around in place
+
+        Turn in place and move head to see what's around Vector
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.behavior.look_around_in_place()
+        """
+        look_around_in_place_request = protocol.LookAroundInPlaceRequest()
+        return await self.grpc_interface.LookAroundInPlace(look_around_in_place_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def roll_visible_cube(self) -> protocol.RollBlockResponse:
+        """Roll a cube that is currently known to the robot
+
+        This behavior will move into position as necessary based on relative
+        distance and orientation.
+
+        Vector needs to see the block for this to succeed.
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.behavior.roll_visible_cube()
+        """
+        roll_block_request = protocol.RollBlockRequest()
+        return await self.grpc_interface.RollBlock(roll_block_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def say_text(self, text: str, use_vector_voice: bool = True,
+                       duration_scalar: float = 1.0) -> protocol.SayTextResponse:
+        """Make Vector speak text.
+
+        .. testcode::
+
+            import anki_vector
+            with anki_vector.Robot() as robot:
+                robot.behavior.say_text("Hello World")
+
+        :param text: The words for Vector to say.
+        :param use_vector_voice: Whether to use Vector's robot voice
+                (otherwise, he uses a generic human male voice).
+        :param duration_scalar: Adjust the relative duration of the
+                generated text to speech audio.
+
+        :return: object that provides the status and utterance state
+        """
+        say_text_request = protocol.SayTextRequest(text=text,
+                                                   use_vector_voice=use_vector_voice,
+                                                   duration_scalar=duration_scalar)
+        return await self.conn.grpc_interface.SayText(say_text_request)
+
+    def say_localized_text(self, text: str, use_vector_voice: bool = True, duration_scalar: float = 1.0,
+                           language: str = 'en') -> protocol.SayTextResponse:
+        """Make Vector speak text with a different localized voice.
+
+                .. testcode::
+
+                    import anki_vector
+                    with anki_vector.Robot() as robot:
+                        robot.behavior.say_localized_text("Hello World",language="de")
+
+        :param text: The words for Vector to say.
+        :param use_vector_voice: Whether to use Vector's robot voice
+                (otherwise, he uses a generic human male voice).
+        :param duration_scalar: Adjust the relative duration of the
+                generated text to speech audio.
+        :param language: Adjust the language spoken for this text
+
+            possible values:
+                - de:         German
+                - en:         English
+                - ja or jp:   Japanese
+                - fr:         French
+
+        :return: object that provides the status and utterance state
+        """
+
+        if language == 'en':
+            locale = 'en_US'
+        if language == 'de':
+            locale = 'de_DE'
+        elif language == 'fr':
+            locale = 'fr_FR'
+        elif language == 'ja' or language == 'jp':
+            locale = 'ja_JP'
+            duration_scalar = duration_scalar / 3
+        else:
+            locale = language
+
+        if self.robot.force_async:
+            # @TODO: make sure requests are sent in conjunction when say_future would be returned -
+            #  currently it's blocking async, to ensure the language is switched back after talking
+            #  because otherwise the persisted different locale would lead to failed cloud requests,
+            #  as on english seems to be supported right now and vector would show network-error on his screen
+            self.change_locale(locale=locale).result()
+            say_future = self.say_text(text, use_vector_voice, duration_scalar)
+            res = say_future.result()
+            self.change_locale(locale='en_US').result()
+            return res
+        else:
+            self.change_locale(locale=locale)
+            say_future = self.say_text(text, use_vector_voice, duration_scalar)
+            self.change_locale(locale='en_US')
+        return say_future
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread(requires_control=False)
+    async def app_intent(self, intent: str, param: Union[str, int] = None) -> protocol.AppIntentResponse:
+        """Send Vector an intention to do something.
+
+        .. testcode::
+
+            import anki_vector
+            with anki_vector.Robot(behavior_control_level=None) as robot:
+                robot.behavior.app_intent(intent='intent_system_sleep')
+
+        :param intent: The intention key
+        :param param: Intention parameter, usually a json encoded string or an int of secounds for the clock timer
+
+        :return: object that provides the status
+        """
+
+        # clock timer uses the length of `param` as the number of seconds to set the timer for
+        if intent=='intent_clock_settimer' and type(param) == int:
+            param = 'x' * param
+
+        app_intent_request = protocol.AppIntentRequest(intent=intent, param=param)
+        return await self.conn.grpc_interface.AppIntent(app_intent_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def change_locale(self, locale: str) -> protocol.UpdateSettingsResponse:
+        """Change Vectors voice locale
+
+        .. testcode::
+
+            import anki_vector
+            with anki_vector.Robot() as robot:
+                robot.behavior.change_locale(locale='de_DE')
+
+        :param locale: The locale ISO code
+
+        :return: object that provides the status
+        """
+
+        settings = {'locale': locale}
+        updatet_settings_request = protocol.UpdateSettingsRequest(settings=settings)
+        return await self.conn.grpc_interface.UpdateSettings(updatet_settings_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior
+    @connection.on_connection_thread()
+    async def update_settings(self, settings) -> protocol.UpdateSettingsResponse:
+        """Send Vector an intention to do something.
+
+        .. testcode::
+
+            import anki_vector
+            with anki_vector.Robot() as robot:
+                robot.behavior.update_settings(settings={'locale':'en_US'})
+
+        :param settings: A list object with the following keys
+            clock_24_hour: bool
+            eye_color: EyeColor
+            default_location: string,
+            dist_is_metric: bool
+            locale: string
+            master_volume: Volume
+            temp_is_fahrenheit: bool
+            time_zone: string
+            button_wakeword: ButtonWakeWord
+
+        :return: object that provides the status
+        """
+        updatet_settings_request = protocol.UpdateSettingsRequest(settings=settings)
+        return await self.conn.grpc_interface.UpdateSettings(updatet_settings_request)
+
+    # TODO Make this cancellable with is_cancellable_behavior?
     @connection.on_connection_thread()
     async def set_eye_color(self, hue: float, saturation: float) -> protocol.SetEyeColorResponse:
         """Set Vector's eye color.
@@ -487,3 +694,327 @@ class BehaviorComponent(util.Component):
                                                                 num_retries=num_retries)
 
         return await self.grpc_interface.SetLiftHeight(set_lift_height_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def turn_towards_face(self,
+                                face: faces.Face,
+                                num_retries: int = 0,
+                                _behavior_id: int = None) -> protocol.TurnTowardsFaceResponse:
+        """Tells Vector to turn towards this face.
+
+        :param face_id: The face Vector will turn towards.
+        :param num_retries: Number of times to reattempt the action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.behavior.turn_towards_face(1)
+
+        Example of cancelling the :meth:`turn_towards_face` behavior:
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                turn_towards_face_future = robot.behavior.turn_towards_face(1)
+                turn_towards_face_future.cancel()
+        """
+        turn_towards_face_request = protocol.TurnTowardsFaceRequest(face_id=face.face_id,
+                                                                    max_turn_angle_rad=util.degrees(180).radians,
+                                                                    id_tag=_behavior_id,
+                                                                    num_retries=num_retries)
+
+        return await self.grpc_interface.TurnTowardsFace(turn_towards_face_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def go_to_object(self,
+                           target_object: objects.LightCube,
+                           distance_from_object,
+                           num_retries: int = 0,
+                           _behavior_id: int = None) -> protocol.GoToObjectResponse:
+        """Tells Vector to drive to his Cube.
+
+        :param target_object: The destination object. CustomObject instances are not supported.
+        :param distance_from_object: The distance from the object to stop. This is the distance
+                between the origins. For instance, the distance from the robot's origin
+                (between Vector's two front wheels) to the cube's origin (at the center of the cube) is ~40mm.
+        :param num_retries: Number of times to reattempt action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+            import anki_vector
+            from anki_vector.util import distance_mm
+
+            with anki_vector.Robot() as robot:
+                robot.world.connect_cube()
+
+                if robot.world.connected_light_cube:
+                    robot.behavior.go_to_object(robot.world.connected_light_cube, distance_mm(70.0))
+        """
+        if target_object is None:
+            raise VectorException("Must supply a target_object of type LightCube to go_to_object")
+
+        go_to_object_request = protocol.GoToObjectRequest(object_id=target_object.object_id,
+                                                          distance_from_object_origin_mm=distance_from_object.distance_mm,
+                                                          use_pre_dock_pose=False,
+                                                          id_tag=_behavior_id,
+                                                          num_retries=num_retries)
+
+        return await self.grpc_interface.GoToObject(go_to_object_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def roll_cube(self,
+                        target_object: objects.LightCube,
+                        approach_angle: util.Angle = None,
+                        num_retries: int = 0,
+                        _behavior_id: int = None) -> protocol.RollObjectResponse:
+        """Tells Vector to roll a specified cube object.
+
+        :param target_object: The cube to roll.
+        :param approach_angle: The angle to approach the cube from. For example, 180 degrees will cause Vector to drive
+                past the cube and approach it from behind.
+        :param num_retries: Number of times to reattempt action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+
+            import anki_vector
+            from anki_vector.util import distance_mm
+
+            with anki_vector.Robot() as robot:
+                robot.world.connect_cube()
+
+                if robot.world.connected_light_cube:
+                    robot.behavior.roll_cube(robot.world.connected_light_cube)
+        """
+        if target_object is None:
+            raise VectorException("Must supply a target_object of type LightCube to roll_cube")
+
+        if approach_angle is None:
+            use_approach_angle = False
+            approach_angle = util.degrees(0)
+        else:
+            use_approach_angle = True
+            approach_angle = approach_angle
+
+        roll_object_request = protocol.RollObjectRequest(object_id=target_object.object_id,
+                                                         approach_angle_rad=approach_angle.radians,
+                                                         use_approach_angle=use_approach_angle,
+                                                         use_pre_dock_pose=use_approach_angle,
+                                                         id_tag=_behavior_id,
+                                                         num_retries=num_retries)
+
+        return await self.grpc_interface.RollObject(roll_object_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def pop_a_wheelie(self,
+                            target_object: objects.LightCube,
+                            approach_angle: util.Angle = None,
+                            num_retries: int = 0,
+                            _behavior_id: int = None) -> protocol.PopAWheelieResponse:
+        """Tells Vector to "pop a wheelie" using his light cube.
+
+        :param target_object: The cube to push down on with Vector's lift, to start the wheelie.
+        :param approach_angle: The angle to approach the cube from. For example, 180 degrees will cause Vector to drive
+                past the cube and approach it from behind.
+        :param num_retries: Number of times to reattempt action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+
+            import anki_vector
+            from anki_vector.util import distance_mm
+
+            with anki_vector.Robot() as robot:
+                robot.world.connect_cube()
+
+                if robot.world.connected_light_cube:
+                    robot.behavior.pop_a_wheelie(robot.world.connected_light_cube)
+        """
+        if target_object is None:
+            raise VectorException("Must supply a target_object of type LightCube to pop_a_wheelie")
+
+        if approach_angle is None:
+            use_approach_angle = False
+            approach_angle = util.degrees(0)
+        else:
+            use_approach_angle = True
+            approach_angle = approach_angle
+
+        pop_a_wheelie_request = protocol.PopAWheelieRequest(object_id=target_object.object_id,
+                                                            approach_angle_rad=approach_angle.radians,
+                                                            use_approach_angle=use_approach_angle,
+                                                            use_pre_dock_pose=use_approach_angle,
+                                                            id_tag=_behavior_id,
+                                                            num_retries=num_retries)
+
+        return await self.grpc_interface.PopAWheelie(pop_a_wheelie_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def pickup_object(self,
+                            target_object: objects.LightCube,
+                            use_pre_dock_pose: bool = True,
+                            num_retries: int = 0,
+                            _behavior_id: int = None) -> protocol.PickupObjectResponse:
+        """Instruct the robot to pick up his LightCube.
+
+        While picking up the cube, Vector will use path planning.
+
+        Note that actions that use the wheels cannot be performed at the same time,
+        otherwise you may see a TRACKS_LOCKED error. Methods that use the wheels include
+        :meth:`go_to_pose`, :meth:`dock_with_cube`, :meth:`turn_in_place`, :meth:`drive_straight`, and :meth:`pickup_object`.
+
+        :param target_object: The LightCube object to dock with.
+        :param use_pre_dock_pose: Whether or not to try to immediately pick
+                up an object or first position the robot next to the object.
+        :param num_retries: Number of times to reattempt action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.world.connect_cube()
+
+                if robot.world.connected_light_cube:
+                    robot.behavior.pickup_object(robot.world.connected_light_cube)
+        """
+        if target_object is None:
+            raise VectorException("Must supply a target_object to dock_with_cube")
+
+        pickup_object_request = protocol.PickupObjectRequest(object_id=target_object.object_id,
+                                                             use_pre_dock_pose=use_pre_dock_pose,
+                                                             id_tag=_behavior_id,
+                                                             num_retries=num_retries)
+
+        return await self.grpc_interface.PickupObject(pickup_object_request)
+
+    @connection.on_connection_thread(is_cancellable_behavior=True)
+    async def place_object_on_ground_here(self,
+                                          num_retries: int = 0,
+                                          _behavior_id: int = None) -> protocol.PlaceObjectOnGroundHereResponse:
+        """Ask Vector to place the object he is carrying on the ground at the current location.
+
+        :param num_retries: Number of times to reattempt action in case of a failure.
+
+        Returns:
+            A response from the robot with status information sent when this request successfully completes or fails.
+
+        .. testcode::
+
+            import anki_vector
+
+            with anki_vector.Robot() as robot:
+                robot.world.connect_cube()
+
+                if robot.world.connected_light_cube:
+                    robot.behavior.pickup_object(robot.world.connected_light_cube)
+                    robot.behavior.place_object_on_ground_here()
+        """
+        place_object_on_ground_here_request = protocol.PlaceObjectOnGroundHereRequest(id_tag=_behavior_id,
+                                                                                      num_retries=num_retries)
+
+        return await self.grpc_interface.PlaceObjectOnGroundHere(place_object_on_ground_here_request)
+
+
+class ReserveBehaviorControl():
+    """A ReserveBehaviorControl object can be used to suppress the ordinary idle behaviors of
+    the Robot and keep Vector still between SDK control instances.  Care must be taken when
+    blocking background behaviors, as this may make Vector appear non-responsive.
+
+    This class is most easily used via a built-in SDK script, and can be called on the command-line
+    via the executable module :class:`anki_vector.reserve_control`:
+
+        .. code-block:: bash
+
+            python3 -m anki_vector.reserve_control
+
+    As long as the script is running, background behaviors will not activate, keeping Vector
+    still while other SDK scripts may take control.  Highest-level behaviors like returning to
+    the charger due to low battery will still activate.
+
+    System-specific shortcuts calling this executable module can be found in the examples/scripts
+    folder.  These scripts can be double-clicked to easily reserve behavior control for the current
+    SDK default robot.
+
+    If there is a need to keep background behaviors from activating in a single script, the class
+    may be used to reserve behavior control while in scope:
+
+        .. code-block:: python
+
+            import anki_vector
+            from anki_vector import behavior
+
+            with behavior.ReserveBehaviorControl():
+
+                # At this point, Vector will remain still, even without
+                # a Robot instance being in scope.
+
+                # take control of the robot as usual
+                with anki_vector.Robot() as robot:
+
+                    robot.anim.play_animation("anim_turn_left_01")
+
+                   # Robot will not perform idle behaviors until the script completes
+
+    :param serial: Vector's serial number. The robot's serial number (ex. 00e20100) is located on
+                   the underside of Vector, or accessible from Vector's debug screen. Used to
+                   identify which Vector configuration to load.
+    :param ip: Vector's IP address. (optional)
+    :param config: A custom :class:`dict` to override values in Vector's configuration. (optional)
+                   Example: :code:`{"cert": "/path/to/file.cert", "name": "Vector-XXXX", "guid": "<secret_key>"}`
+                   where :code:`cert` is the certificate to identify Vector, :code:`name` is the
+                   name on Vector's face when his backpack is double-clicked on the charger, and
+                   :code:`guid` is the authorization token that identifies the SDK user.
+                   Note: Never share your authentication credentials with anyone.
+    :param behavior_activation_timeout: The time to wait for control of the robot before failing.
+    """
+
+    def __init__(self,
+                 serial: str = None,
+                 ip: str = None,
+                 config: dict = None,
+                 behavior_activation_timeout: int = 10):
+        config = config if config is not None else {}
+        self.logger = util.get_class_logger(__name__, self)
+        config = {**util.read_configuration(serial, name=None, logger=self.logger), **config}
+        self._name = config["name"]
+        self._ip = ip if ip is not None else config["ip"]
+        self._cert_file = config["cert"]
+        self._guid = config["guid"]
+
+        self._port = "443"
+        if 'port' in config:
+            self._port = config["port"]
+
+        if self._name is None or self._ip is None or self._cert_file is None or self._guid is None:
+            raise ValueError(
+                "The Robot object requires a serial and for Vector to be logged in (using the app then running the anki_vector.configure executable submodule).\n"
+                "You may also provide the values necessary for connection through the config parameter. ex: "
+                '{"name":"Vector-XXXX", "ip":"XX.XX.XX.XX", "cert":"/path/to/cert_file", "guid":"<secret_key>"}')
+
+        self._conn = connection.Connection(self._name, ':'.join([self._ip, self._port]), self._cert_file, self._guid,
+                                           behavior_control_level=connection.CONTROL_PRIORITY_LEVEL.RESERVE_CONTROL)
+        self._behavior_activation_timeout = behavior_activation_timeout
+
+    def __enter__(self):
+        self._conn.connect(self._behavior_activation_timeout)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._conn.close()

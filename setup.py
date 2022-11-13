@@ -66,11 +66,11 @@ def get_requirements():
     return reqs
 
 setup(
-    name='anki_vector',
+    name='ikkez_vector',
     version=VERSION,
     description="SDK for Anki's Vector robot, the home robot who hangs out and helps out",
     long_description=__doc__,
-    url='https://developer.anki.com',
+    url='https://github.com/ikkez/vector-python-sdk',
     author='Anki, Inc',
     author_email='developer@anki.com',
     license='Apache License, Version 2.0',
@@ -81,6 +81,8 @@ setup(
         'Topic :: Software Development :: Libraries',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
     zip_safe=True,
     keywords='anki vector robot robotics sdk'.split(),

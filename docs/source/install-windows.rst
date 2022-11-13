@@ -34,12 +34,19 @@ SDK Installation
 
 To install the SDK, navigate into the SDK folder and type the following into a Command Prompt window::
 
-    cd vector_python_sdk_0.5.0
-    py -3 -m pip install .
+    py -3 -m pip install --user ikkez_vector
 
 .. note:: If you encounter an error during SDK installation, you may need to upgrade your pip install. Try ``python -m pip install --upgrade pip`` or ``py -3 -m pip install --upgrade pip``
 
 .. note:: If you encounter an error during SDK installation, you may need to upgrade your Python Setuptools. Try ``py -3 -m pip install --upgrade setuptools``
+
+"""""""""""
+SDK Upgrade
+"""""""""""
+
+To upgrade the SDK from a previous install, enter this command::
+
+    py -3 -m pip install --user --upgrade ikkez_vector
 
 ^^^^^^^^^^^^^^^^^^^^^
 Vector Authentication
