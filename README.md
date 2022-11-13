@@ -37,8 +37,8 @@ HOW TO REPRODUCE MY TEST SETUP
 About Vector side
 Initially I had my sdk and Vector still bound to Anki server and certificates. Nothing was working for me until I did the following:
 1. Create an account at DDL (same email and pwd of my old Anki account)
-2. Reset user data on Vector
-3. Turn Vector on and do the DDL guided setup. This downloaded on Vector the 2.0 OTA image
+2. (Reset user data on Vector). Reboot in recovery mode, open the companion app and connect to Vector (remember to double press the pairing button when the app is searching for him over BT) 
+3. This downloaded on Vector the 2.0 OTA image
 4. I checked that Vector could pair and work with the companion app. 
 5. Perfect. At this point all the usual apps (like Vector Explorer) started working again
 6. I ran the Python SDK on Windows and was also able to communicate with Vector

@@ -49,7 +49,7 @@ def main():
             phrase = sentences[i]
 
         print("Say " + phrase)
-        robot.behavior.say_text(phrase)
+        robot.behavior.say_text(phrase, False)
 
 if __name__ == "__main__":
     main()
